@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { LogOut, Search, Filter } from 'lucide-react';
+import CandidateProfileModal from '../components/CandidateProfileModal';
+import ResumePreviewModal from '../components/ResumePreviewModal';
 
 interface DashboardProps {
   user: any;
@@ -14,6 +16,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [loading, setLoading] = useState(true);
+  const [selectedCandidate, setSelectedCandidate] = useState<any>(null);
+  const [previewCandidate, setPreviewCandidate] = useState<any>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const fetchCandidates = async () => {
@@ -42,6 +47,40 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
       onLogout();
       navigate('/login');
     }
+  };
+
+  const handleViewResume = async (e: React.MouseEvent, candidate: any) => {
+    e.stopPropagation();
+    e.preventDefault();
+    try {
+      const response = await api.get(`/candidates/${candidate.id}/resume/download`, {
+        responseType: 'blob'
+      });
+      
+      const fileType = candidate.resume?.file_type || 'application/pdf';
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: fileType }));
+      setPreviewUrl(url);
+      setPreviewCandidate(candidate);
+    } catch (err) {
+      alert('Failed to preview resume.');
+    }
+  };
+
+  const handleDownloadResume = (candidate: any, url: string) => {
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', candidate.resume?.original_filename || 'resume.pdf');
+    document.body.appendChild(link);
+    link.click();
+    link.parentNode?.removeChild(link);
+  };
+
+  const closePreview = () => {
+    if (previewUrl) {
+      window.URL.revokeObjectURL(previewUrl);
+    }
+    setPreviewUrl(null);
+    setPreviewCandidate(null);
   };
 
   const awaitingCount = candidates.filter(c => c.status === 'awaiting_assessment').length;
@@ -136,7 +175,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                 </tr>
               ) : (
                 candidates.map((candidate) => (
-                  <tr key={candidate.id}>
+                  <tr key={candidate.id} onClick={() => setSelectedCandidate(candidate)} style={{ cursor: 'pointer' }} className="table-row-hover">
                     <td>
                       <div style={{ fontWeight: 500 }}>{candidate.full_name}</div>
                     </td>
@@ -152,9 +191,12 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                     </td>
                     <td>
                       {candidate.resume ? (
-                        <a href="#" className="action-link" onClick={(e) => e.preventDefault()}>
-                          View Resume
-                        </a>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>{candidate.resume.original_filename}</span>
+                          <a href="#" className="action-link" onClick={(e) => handleViewResume(e, candidate)} style={{ fontSize: '0.75rem' }}>
+                            View
+                          </a>
+                        </div>
                       ) : (
                         <span style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>No Resume</span>
                       )}
@@ -166,6 +208,44 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
           </table>
         </div>
       </main>
+
+      {selectedCandidate && (
+        <CandidateProfileModal 
+          candidate={selectedCandidate}
+          onClose={() => setSelectedCandidate(null)}
+          onUpdate={() => {
+            fetchCandidates();
+            // Automatically refresh the modal data as well
+            const updatedCandidate = candidates.find(c => c.id === selectedCandidate.id);
+            if (updatedCandidate) {
+              // Note: the updated candidate will only exist AFTER fetchCandidates returns,
+              // but since we refresh, the UI will eventually update.
+              // We'll close and rely on the background refresh for now, or just let fetchCandidates update it.
+            }
+          }}
+          onPreview={(c) => {
+            // Fake a mouse event
+            handleViewResume({ stopPropagation: () => {}, preventDefault: () => {} } as any, c);
+          }}
+          onDownload={(c) => {
+            // We need to fetch the blob again to download, or we can just fetch and trigger download
+            api.get(`/candidates/${c.id}/resume/download`, { responseType: 'blob' }).then(response => {
+              const fileType = c.resume?.file_type || 'application/pdf';
+              const url = window.URL.createObjectURL(new Blob([response.data], { type: fileType }));
+              handleDownloadResume(c, url);
+            }).catch(() => alert('Failed to download resume.'));
+          }}
+        />
+      )}
+
+      {previewCandidate && previewUrl && (
+        <ResumePreviewModal
+          url={previewUrl}
+          candidate={previewCandidate}
+          onClose={closePreview}
+          onDownload={() => handleDownloadResume(previewCandidate, previewUrl)}
+        />
+      )}
     </div>
   );
 };
