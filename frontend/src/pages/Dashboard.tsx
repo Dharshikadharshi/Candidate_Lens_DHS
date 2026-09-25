@@ -186,7 +186,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                     <td>{candidate.target_role}</td>
                     <td>
                       <span className={`status-badge ${candidate.status === 'awaiting_assessment' ? 'status-awaiting' : 'status-completed'}`}>
-                        {candidate.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                        {candidate.status.replace('_', ' ').replace(/\b\w/g, (letter: string) => letter.toUpperCase())}
                       </span>
                     </td>
                     <td>
