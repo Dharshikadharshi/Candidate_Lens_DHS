@@ -261,16 +261,49 @@ a {
   border-radius: 9999px;
   font-size: 0.75rem;
   font-weight: 500;
+  border: 1px solid transparent;
+  transition: all 0.2s ease-in-out;
+}
+
+.status-badge:focus {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
 }
 
 .status-awaiting {
-  background-color: #FEF3C7;
-  color: #92400E;
+  background-color: #fef9c3;
+  color: #b45309;
+  border-color: #fef08a;
+}
+.status-awaiting:hover {
+  background-color: #fef08a;
+}
+
+.status-in-progress {
+  background-color: #e0f2fe;
+  color: #0369a1;
+  border-color: #bae6fd;
+}
+.status-in-progress:hover {
+  background-color: #bae6fd;
 }
 
 .status-completed {
-  background-color: #D1FAE5;
-  color: #065F46;
+  background-color: #dcfce7;
+  color: #15803d;
+  border-color: #bbf7d0;
+}
+.status-completed:hover {
+  background-color: #bbf7d0;
+}
+
+.status-report-pending {
+  background-color: #ffedd5;
+  color: #c2410c;
+  border-color: #fed7aa;
+}
+.status-report-pending:hover {
+  background-color: #fed7aa;
 }
 
 .action-link {

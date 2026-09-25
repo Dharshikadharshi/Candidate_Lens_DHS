@@ -9,7 +9,7 @@ from app.api.deps import get_db, get_current_user
 from app.models.candidate import Candidate
 from app.models.user import User
 from app.models.resume import Resume
-from app.schemas.candidate import CandidateListResponse, ResumeInfo
+from app.schemas.candidate import CandidateListResponse, ResumeInfo, CandidateCreate, CandidateResponse, CandidateStatusUpdate
 
 router = APIRouter()
 
@@ -49,6 +49,29 @@ def read_candidates(
 
     return {"items": items, "total": total}
 
+@router.post("", response_model=CandidateResponse, status_code=status.HTTP_201_CREATED)
+def create_candidate(
+    candidate: CandidateCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    existing = db.query(Candidate).filter(Candidate.email == candidate.email).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Candidate with this email already exists.")
+    
+    new_candidate = Candidate(
+        full_name=candidate.full_name,
+        email=candidate.email,
+        phone=candidate.phone,
+        target_role=candidate.target_role,
+        status="awaiting_assessment",
+        created_by=current_user.id
+    )
+    db.add(new_candidate)
+    db.commit()
+    db.refresh(new_candidate)
+    return new_candidate
+
 @router.post("/{candidate_id}/resume", response_model=ResumeInfo)
 def upload_resume(
     candidate_id: str,
@@ -83,7 +106,7 @@ def upload_resume(
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    existing_resume = db.query(Resume).filter(Resume.candidate_id == candidate_id).first()
+    existing_resume = db.query(Resume).filter(Resume.candidate_id == c_id).first()
     if existing_resume:
         # Delete old file
         if os.path.exists(existing_resume.file_path):
@@ -148,3 +171,54 @@ def download_resume(
         media_type=resume.file_type,
         content_disposition_type="inline"
     )
+
+@router.patch("/{candidate_id}/status", response_model=CandidateResponse)
+def update_candidate_status(
+    candidate_id: str,
+    status_update: CandidateStatusUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    valid_statuses = ["awaiting_assessment", "assessment_in_progress", "completed", "report_pending"]
+    if status_update.status not in valid_statuses:
+        raise HTTPException(status_code=400, detail="Invalid candidate status.")
+
+    try:
+        c_id = uuid.UUID(candidate_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid candidate ID format")
+        
+    candidate = db.query(Candidate).filter(Candidate.id == c_id).first()
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+        
+    candidate.status = status_update.status
+    db.commit()
+    db.refresh(candidate)
+    return candidate
+
+@router.delete("/{candidate_id}")
+def delete_candidate(
+    candidate_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        c_id = uuid.UUID(candidate_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid candidate ID format")
+        
+    candidate = db.query(Candidate).filter(Candidate.id == c_id).first()
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+        
+    resume = db.query(Resume).filter(Resume.candidate_id == c_id).first()
+    if resume and resume.file_path and os.path.exists(resume.file_path):
+        try:
+            os.remove(resume.file_path)
+        except OSError:
+            pass
+            
+    db.delete(candidate)
+    db.commit()
+    return {"message": "Candidate deleted successfully."}
