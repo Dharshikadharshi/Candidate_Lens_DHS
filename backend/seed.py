@@ -1,17 +1,24 @@
 import sys
 import os
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
+from sqlalchemy.engine import make_url
 from sqlalchemy.orm import sessionmaker
+from app.core.config import settings
 
 # connect without db to create db
-engine_default = create_engine('postgresql+psycopg2://postgres:Haresh%40123@localhost/postgres')
+database_url = make_url(settings.DATABASE_URL)
+engine_default = create_engine(
+    database_url.set(database="postgres"),
+    isolation_level="AUTOCOMMIT",
+)
 conn = engine_default.connect()
-from sqlalchemy import text
-conn.execute(text("COMMIT"))
-try:
+database_exists = conn.execute(
+    text("SELECT 1 FROM pg_database WHERE datname = :database_name"),
+    {"database_name": database_url.database},
+).scalar()
+if not database_exists:
     conn.execute(text("CREATE DATABASE candidatelens"))
-except Exception as e:
-    print("DB might exist: ", e)
+    print("Created database candidatelens")
 conn.close()
 
 from app.db.database import engine, Base

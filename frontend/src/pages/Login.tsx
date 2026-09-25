@@ -66,10 +66,9 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setLoading(true);
     try {
       await api.post('/auth/signup', {
-        name,
+        full_name: name,
         email,
-        password,
-        confirm_password: confirmPassword
+        password
       });
       
       setSuccess('Account created successfully! Please sign in.');
