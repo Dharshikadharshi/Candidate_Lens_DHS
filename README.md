@@ -62,3 +62,10 @@ CandidateLens is an HR-facing pre-round readiness platform.
    cd frontend
    npm run dev
    ```
+
+
+## Resume Upload Feature
+- Resumes are uploaded to ackend/uploads/resumes/ locally.
+- Supported formats: PDF, DOC, DOCX.
+- Maximum file size: 10MB.
+- To transition to AWS S3, modify the upload_resume endpoint in candidates.py to upload the file buffer to S3 using boto3 instead of shutil.copyfileobj, and store the S3 URL in stored_filename.
