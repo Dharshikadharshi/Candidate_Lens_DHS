@@ -14,11 +14,10 @@ class Candidate(Base):
     phone = Column(String)
     target_role = Column(String, nullable=False)
     status = Column(String, default="awaiting_assessment", nullable=False)
-    resume_id = Column(String, nullable=True) # Mock ID or S3 object key
-    resume_file_name = Column(String, nullable=True) # Original file name
-    
+
     created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     creator = relationship("User", back_populates="candidates")
+    resume = relationship("Resume", back_populates="candidate", uselist=False, cascade="all, delete-orphan")
