@@ -23,6 +23,9 @@ class CandidateBase(BaseModel):
 class CandidateCreate(CandidateBase):
     pass
 
+class CandidateStatusUpdate(BaseModel):
+    status: str
+
 class CandidateResponse(CandidateBase):
     id: UUID
     created_at: datetime
