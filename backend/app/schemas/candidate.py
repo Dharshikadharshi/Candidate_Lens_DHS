@@ -4,8 +4,14 @@ from uuid import UUID
 from datetime import datetime
 
 class ResumeInfo(BaseModel):
-    id: str
-    file_name: str
+    id: UUID
+    original_filename: str
+    file_type: str
+    file_size: int
+    uploaded_at: datetime
+    
+    class Config:
+        from_attributes = True
 
 class CandidateBase(BaseModel):
     full_name: str
@@ -15,8 +21,7 @@ class CandidateBase(BaseModel):
     status: Optional[str] = "awaiting_assessment"
 
 class CandidateCreate(CandidateBase):
-    resume_id: Optional[str] = None
-    resume_file_name: Optional[str] = None
+    pass
 
 class CandidateResponse(CandidateBase):
     id: UUID
