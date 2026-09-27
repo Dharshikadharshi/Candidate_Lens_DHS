@@ -38,3 +38,7 @@ class CandidateResponse(CandidateBase):
 class CandidateListResponse(BaseModel):
     items: List[CandidateResponse]
     total: int
+
+
+class CandidateDetailResponse(CandidateResponse):
+    created_by_name: Optional[str] = None

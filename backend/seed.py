@@ -24,6 +24,9 @@ conn.close()
 from app.db.database import engine, Base
 from app.models.user import User
 from app.models.candidate import Candidate
+from app.models.resume import Resume
+from app.models.interview import Interview, InterviewEvent
+from app.models import assessment  # noqa: F401
 from app.core.security import get_password_hash
 
 # Create tables

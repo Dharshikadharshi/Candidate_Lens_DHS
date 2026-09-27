@@ -25,6 +25,8 @@ from app.db.database import Base
 from app.models.user import User
 from app.models.candidate import Candidate
 from app.models.resume import Resume
+from app.models.interview import Interview, InterviewEvent
+from app.models import assessment  # noqa: F401
 
 target_metadata = Base.metadata
 

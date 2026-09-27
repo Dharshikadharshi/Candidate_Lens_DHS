@@ -1,4 +1,5 @@
-from typing import Generator
+import uuid
+from typing import Generator, Optional
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
@@ -9,6 +10,7 @@ from app.models.user import User
 from app.schemas.user import TokenPayload
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login")
+optional_oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login", auto_error=False)
 
 def get_db() -> Generator:
     try:
@@ -32,10 +34,34 @@ def get_current_user(
         token_data = TokenPayload(**payload)
         if token_data.sub is None:
             raise credentials_exception
-    except JWTError:
+        user_id = uuid.UUID(token_data.sub)
+    except (JWTError, ValueError):
         raise credentials_exception
     
-    user = db.query(User).filter(User.id == token_data.sub).first()
+    user = db.query(User).filter(User.id == user_id).first()
     if user is None:
         raise credentials_exception
     return user
+
+
+def get_optional_current_user(
+    db: Session = Depends(get_db), token: Optional[str] = Depends(optional_oauth2_scheme)
+) -> Optional[User]:
+    """Like get_current_user, but returns None when no bearer token is sent.
+
+    Used by routes that also accept a candidate invitation token.
+    """
+    if not token:
+        return None
+    return get_current_user(db=db, token=token)
+
+
+def get_session_factory():
+    """Session factory for work that outlives the request (background AI jobs, usage logging)."""
+    return SessionLocal
+
+
+def get_ai_client(session_factory=Depends(get_session_factory)):
+    from app.ai.client import AIClient, _default_provider
+
+    return AIClient(_default_provider(), session_factory)

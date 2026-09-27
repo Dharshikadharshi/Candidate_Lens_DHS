@@ -237,7 +237,18 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                 candidates.map((candidate) => (
                   <tr key={candidate.id} onClick={() => setSelectedCandidate(candidate)} style={{ cursor: 'pointer' }} className="table-row-hover">
                     <td>
-                      <div style={{ fontWeight: 500 }}>{candidate.full_name}</div>
+                      <a
+                        href={`/candidates/${candidate.id}`}
+                        className="candidate-name-link"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (e.metaKey || e.ctrlKey || e.shiftKey) return; // allow open-in-new-tab
+                          e.preventDefault();
+                          navigate(`/candidates/${candidate.id}`);
+                        }}
+                      >
+                        {candidate.full_name}
+                      </a>
                     </td>
                     <td>
                       <div>{candidate.email}</div>

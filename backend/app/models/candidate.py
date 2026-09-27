@@ -21,3 +21,4 @@ class Candidate(Base):
 
     creator = relationship("User", back_populates="candidates")
     resume = relationship("Resume", back_populates="candidate", uselist=False, cascade="all, delete-orphan")
+    interviews = relationship("Interview", back_populates="candidate", cascade="all, delete-orphan")
