@@ -23,6 +23,9 @@ class CandidateBase(BaseModel):
 class CandidateCreate(CandidateBase):
     pass
 
+class CandidateStatusUpdate(BaseModel):
+    status: str
+
 class CandidateResponse(CandidateBase):
     id: UUID
     created_at: datetime
@@ -35,3 +38,7 @@ class CandidateResponse(CandidateBase):
 class CandidateListResponse(BaseModel):
     items: List[CandidateResponse]
     total: int
+
+
+class CandidateDetailResponse(CandidateResponse):
+    created_by_name: Optional[str] = None
