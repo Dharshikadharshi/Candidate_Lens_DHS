@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useOptimistic, useState, useTransition } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Calendar, Clock, Copy, FileText, LogOut, Mail, Phone, RefreshCw, Video, Zap } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, Copy, FileText, LogOut, Mail, Phone, RefreshCw, ShieldCheck, Video, Zap } from 'lucide-react';
 import InterviewStatusBadge from '../components/InterviewStatusBadge';
 import InterviewRequestModal from '../components/InterviewRequestModal';
 import ResumePreviewModal from '../components/ResumePreviewModal';
@@ -8,6 +8,8 @@ import ResumeAnalysisCard from '../components/ai/ResumeAnalysisCard';
 import AIPlanSetup from '../components/ai/AIPlanSetup';
 import { getAIConfig } from '../services/ai';
 import type { AIConfigInfo } from '../types/ai';
+import { getCandidateValidationHistory } from '../services/validation';
+import type { ValidationHistoryResponse } from '../types/validation';
 import {
   cancelInterview,
   createInterview,
@@ -61,6 +63,7 @@ const CandidateProfilePage: React.FC<CandidateProfilePageProps> = ({ user, onLog
   const [previewError, setPreviewError] = useState('');
   const [isPending, startTransition] = useTransition();
   const [aiConfig, setAIConfig] = useState<AIConfigInfo | null>(null);
+  const [validationHistory, setValidationHistory] = useState<ValidationHistoryResponse | null>(null);
 
   useEffect(() => { getAIConfig().then(setAIConfig).catch(() => undefined); }, []);
 
@@ -79,10 +82,15 @@ const CandidateProfilePage: React.FC<CandidateProfilePageProps> = ({ user, onLog
     (async () => {
       try {
         setLoading(true);
-        const [c, items] = await Promise.all([getCandidate(candidateId), listCandidateInterviews(candidateId)]);
+        const [c, items, valHist] = await Promise.all([
+          getCandidate(candidateId),
+          listCandidateInterviews(candidateId),
+          getCandidateValidationHistory(candidateId).catch(() => null),
+        ]);
         if (cancelled) return;
         setCandidate(c);
         setInterviews(items);
+        setValidationHistory(valHist);
         setLoadError('');
       } catch (err: any) {
         if (!cancelled) {
@@ -324,8 +332,66 @@ const CandidateProfilePage: React.FC<CandidateProfilePageProps> = ({ user, onLog
         </div>
 
         <div style={{ marginTop: '1.5rem' }}>
-          <ResumeAnalysisCard candidateId={candidate.id} aiConfigured={!!aiConfig?.configured} />
+          <ResumeAnalysisCard
+            candidateId={candidate.id}
+            aiConfigured={!!aiConfig?.configured}
+            onOpenValidation={() => navigate(`/candidates/${candidate.id}/resume-validation`)}
+          />
         </div>
+
+        {/* AI Resume Validation Standalone Section */}
+        <section className="card" style={{ marginTop: '1.5rem' }} aria-label="AI Resume Validation">
+          <div className="section-header">
+            <div>
+              <h2 className="card-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <ShieldCheck size={20} color="#4F46E5" /> AI Resume Validation
+              </h2>
+              <p className="hint" style={{ marginTop: '0.25rem' }}>
+                Standalone document quality audit, completeness checks & skill evidence verification against {candidate.target_role}.
+              </p>
+            </div>
+            <button
+              className="btn-primary-sm"
+              onClick={() => navigate(`/candidates/${candidate.id}/resume-validation`)}
+              disabled={!candidate.resume}
+              title={!candidate.resume ? 'Upload a resume first' : undefined}
+            >
+              <ShieldCheck size={16} /> {validationHistory?.latest?.status === 'completed' ? 'View Full Validation Report' : 'Validate Resume'}
+            </button>
+          </div>
+
+          {validationHistory?.latest && validationHistory.latest.status !== 'not_started' ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginTop: '0.75rem', padding: '0.75rem 1rem', backgroundColor: '#F9FAFB', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span className="badge" style={{ backgroundColor: '#EEF2FF', color: '#4F46E5' }}>v{validationHistory.latest.version}</span>
+                  <span style={{ fontWeight: 600 }}>{validationHistory.latest.target_role}</span>
+                  {validationHistory.latest.status === 'completed' && <span className="status-badge status-accepted">Completed</span>}
+                  {validationHistory.latest.status === 'processing' && <span className="status-badge status-awaiting">Processing</span>}
+                  {validationHistory.latest.status === 'failed' && <span className="status-badge status-danger">Failed</span>}
+                </div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                  Validated {formatDate(validationHistory.latest.created_at)} · Rubric {validationHistory.latest.rubric_version}
+                </div>
+              </div>
+
+              {validationHistory.latest.overall_score != null && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Document Quality</div>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 700, color: validationHistory.latest.overall_score >= 80 ? '#059669' : validationHistory.latest.overall_score >= 60 ? '#D97706' : '#DC2626' }}>
+                      {Math.round(validationHistory.latest.overall_score)} / 100
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="hint" style={{ marginTop: '0.5rem' }}>
+              No validation report generated yet for this candidate. Click "Validate Resume" to run a complete 5-category evidence audit.
+            </div>
+          )}
+        </section>
 
         <section className="card" style={{ marginTop: '1.5rem' }}>
           <div className="section-header">

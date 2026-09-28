@@ -29,3 +29,5 @@ backend/uploads/
 *.pdf
 *.doc
 *.docx
+
+/livekit

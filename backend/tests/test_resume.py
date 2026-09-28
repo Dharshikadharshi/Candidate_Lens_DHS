@@ -72,7 +72,11 @@ def setup_db():
     uploads = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
     if os.path.exists(uploads):
         shutil.rmtree(uploads)
-    os.remove("./test.db")
+    try:
+        if os.path.exists("./test.db"):
+            os.remove("./test.db")
+    except OSError:
+        pass
 
 def test_unauthenticated_upload():
     # Remove override

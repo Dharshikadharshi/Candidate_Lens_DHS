@@ -11,6 +11,7 @@ import './index.css';
 // The video SDK is large; load it only when someone opens an interview room.
 const InterviewRoomPage = lazy(() => import('./pages/InterviewRoomPage'));
 const InterviewReportPage = lazy(() => import('./pages/InterviewReportPage'));
+const ResumeValidationPage = lazy(() => import('./pages/ResumeValidationPage'));
 
 const PageLoading = () => (
   <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>Loading...</div>
@@ -52,6 +53,14 @@ const App: React.FC = () => {
         <Route
           path="/interviews/:interviewId/report"
           element={user ? <Suspense fallback={<PageLoading />}><InterviewReportPage /></Suspense> : <Navigate to="/login" replace />}
+        />
+        <Route
+          path="/candidates/:candidateId/resume-validation"
+          element={user ? <Suspense fallback={<PageLoading />}><ResumeValidationPage user={user} onLogout={logout} /></Suspense> : <Navigate to="/login" replace />}
+        />
+        <Route
+          path="/resume-validation/:reportId"
+          element={user ? <Suspense fallback={<PageLoading />}><ResumeValidationPage user={user} onLogout={logout} /></Suspense> : <Navigate to="/login" replace />}
         />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
       </Routes>

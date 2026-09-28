@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { AlertTriangle, Loader2, RefreshCw, Sparkles } from 'lucide-react';
+import { AlertTriangle, Loader2, RefreshCw, ShieldCheck, Sparkles } from 'lucide-react';
 import { getResumeAnalysis, requestResumeAnalysis } from '../../services/ai';
 import { getErrorMessage } from '../../services/interviews';
 import type { ResumeAnalysis } from '../../types/ai';
@@ -8,11 +8,12 @@ interface ResumeAnalysisCardProps {
   candidateId: string;
   aiConfigured: boolean;
   onAnalysis?: (analysis: ResumeAnalysis) => void;
+  onOpenValidation?: () => void;
 }
 
 const POLL_MS = 2500;
 
-const ResumeAnalysisCard: React.FC<ResumeAnalysisCardProps> = ({ candidateId, aiConfigured, onAnalysis }) => {
+const ResumeAnalysisCard: React.FC<ResumeAnalysisCardProps> = ({ candidateId, aiConfigured, onAnalysis, onOpenValidation }) => {
   const [analysis, setAnalysis] = useState<ResumeAnalysis | null>(null);
   const [error, setError] = useState('');
   const [starting, setStarting] = useState(false);
@@ -52,11 +53,18 @@ const ResumeAnalysisCard: React.FC<ResumeAnalysisCardProps> = ({ candidateId, ai
     <section className="card" aria-label="AI resume analysis">
       <div className="section-header">
         <h2 className="card-title" style={{ margin: 0 }}>AI resume analysis</h2>
-        {analysis.has_resume && aiConfigured && analysis.status !== 'processing' && (
-          <button className="btn-secondary-sm" onClick={() => start(analysis.status === 'completed')} disabled={starting}>
-            {analysis.status === 'not_started' ? <><Sparkles size={16} /> Analyze resume</> : <><RefreshCw size={16} /> Re-analyze</>}
-          </button>
-        )}
+        <div className="button-row" style={{ alignItems: 'center' }}>
+          {analysis.has_resume && aiConfigured && analysis.status !== 'processing' && (
+            <button className="btn-secondary-sm" onClick={() => start(analysis.status === 'completed')} disabled={starting}>
+              {analysis.status === 'not_started' ? <><Sparkles size={16} /> Analyze resume</> : <><RefreshCw size={16} /> Re-analyze</>}
+            </button>
+          )}
+          {analysis.has_resume && onOpenValidation && (
+            <button className="btn-primary-sm" onClick={onOpenValidation} title="Run standalone document quality audit">
+              <ShieldCheck size={16} /> Resume Validation
+            </button>
+          )}
+        </div>
       </div>
 
       {!analysis.has_resume && <div className="empty-box">Upload a resume to enable AI analysis and resume-based questions.</div>}

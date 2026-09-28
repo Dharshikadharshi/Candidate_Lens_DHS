@@ -27,6 +27,9 @@ from app.models.candidate import Candidate
 from app.models.resume import Resume
 from app.models.interview import Interview, InterviewEvent
 from app.models import assessment  # noqa: F401
+from app.models.validation import ResumeValidationReport  # noqa: F401
+
+config.set_main_option("sqlalchemy.url", settings.DATABASE_URL.replace("%", "%%"))
 
 target_metadata = Base.metadata
 
