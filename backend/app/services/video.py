@@ -65,8 +65,14 @@ def create_access_token(room_name: str, identity: str, display_name: str, metada
         },
         ttl,
     )
+    server_url = settings.LIVEKIT_URL
+    if server_url.startswith("https://"):
+        server_url = server_url.replace("https://", "wss://", 1)
+    elif server_url.startswith("http://"):
+        server_url = server_url.replace("http://", "ws://", 1)
+
     return VideoAccess(
-        server_url=settings.LIVEKIT_URL,
+        server_url=server_url,
         room_name=room_name,
         token=token,
         identity=identity,

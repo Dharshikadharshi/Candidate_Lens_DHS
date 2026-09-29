@@ -5,6 +5,7 @@ import InterviewStatusBadge from '../components/InterviewStatusBadge';
 import InterviewRequestModal from '../components/InterviewRequestModal';
 import ResumePreviewModal from '../components/ResumePreviewModal';
 import ResumeAnalysisCard from '../components/ai/ResumeAnalysisCard';
+import ResumeValidationCard from '../components/ai/ResumeValidationCard';
 import AIPlanSetup from '../components/ai/AIPlanSetup';
 import { getAIConfig } from '../services/ai';
 import type { AIConfigInfo } from '../types/ai';
@@ -323,8 +324,9 @@ const CandidateProfilePage: React.FC<CandidateProfilePageProps> = ({ user, onLog
           </section>
         </div>
 
-        <div style={{ marginTop: '1.5rem' }}>
+        <div className="profile-grid" style={{ marginTop: '1.5rem' }}>
           <ResumeAnalysisCard candidateId={candidate.id} aiConfigured={!!aiConfig?.configured} />
+          <ResumeValidationCard candidateId={candidate.id} />
         </div>
 
         <section className="card" style={{ marginTop: '1.5rem' }}>

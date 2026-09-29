@@ -24,18 +24,33 @@ class ResumeText:
     chars: int
     truncated: bool
     redactions: dict = field(default_factory=dict)
+    github_url: Optional[str] = None
 
 
 def file_fingerprint(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def _pdf_pages(data: bytes) -> list[str]:
+def _pdf_pages_and_links(data: bytes) -> tuple[list[str], list[str]]:
     from pypdf import PdfReader
 
     try:
         reader = PdfReader(io.BytesIO(data))
-        return [(page.extract_text() or "") for page in reader.pages]
+        pages = []
+        links = []
+        for page in reader.pages:
+            pages.append(page.extract_text() or "")
+            if "/Annots" in page:
+                annots = page["/Annots"]
+                if annots:
+                    for annot in annots:
+                        try:
+                            obj = annot.get_object()
+                            if obj and "/A" in obj and "/URI" in obj["/A"]:
+                                links.append(obj["/A"]["/URI"])
+                        except Exception:
+                            pass
+        return pages, links
     except Exception as exc:  # malformed or encrypted PDF
         raise ResumeTextError(f"Could not read the PDF: {exc.__class__.__name__}") from exc
 
@@ -75,20 +90,42 @@ def redact(text: str) -> tuple[str, dict]:
     return text, counts
 
 
+def extract_github_url(text: str, annotations: list[str] = None) -> Optional[str]:
+    github_pattern = re.compile(r"(?:https?://)?(?:www\.)?github\.com/([a-zA-Z0-9-]+)/?", re.IGNORECASE)
+    
+    if annotations:
+        for ann in annotations:
+            match = github_pattern.search(ann)
+            if match:
+                return f"https://github.com/{match.group(1)}"
+                
+    match = github_pattern.search(text)
+    if match:
+         return f"https://github.com/{match.group(1)}"
+    
+    return None
+
+
 def extract_resume_text(data: bytes, file_type: str, filename: str) -> ResumeText:
     name = filename.lower()
+    links = []
     if file_type == "application/pdf" or name.endswith(".pdf"):
-        pages = _pdf_pages(data)
+        pages, links = _pdf_pages_and_links(data)
     elif name.endswith(".docx"):
         pages = _docx_pages(data)
     else:
         raise ResumeTextError("Legacy .doc files cannot be analysed. Please upload the resume as PDF or DOCX.")
 
     marked = []
+    raw_text_for_extraction = ""
     for i, page in enumerate(pages, start=1):
         cleaned = re.sub(r"[ \t]+", " ", page).strip()
         if cleaned:
             marked.append(f"=== Page {i} ===\n{cleaned}" if len(pages) > 1 else cleaned)
+            raw_text_for_extraction += cleaned + " "
+            
+    github_url = extract_github_url(raw_text_for_extraction, links)
+    
     text = "\n\n".join(marked)
     if len(re.sub(r"\W", "", text)) < 40:
         raise ResumeTextError("No readable text was found in the resume (it may be a scanned image).")
@@ -97,7 +134,7 @@ def extract_resume_text(data: bytes, file_type: str, filename: str) -> ResumeTex
     truncated = len(text) > MAX_RESUME_CHARS
     if truncated:
         text = text[:MAX_RESUME_CHARS]
-    return ResumeText(text=text, pages=len(pages), chars=len(text), truncated=truncated, redactions=counts)
+    return ResumeText(text=text, pages=len(pages), chars=len(text), truncated=truncated, redactions=counts, github_url=github_url)
 
 
 def normalize(text: str) -> str:

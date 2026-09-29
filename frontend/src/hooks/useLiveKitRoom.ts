@@ -96,6 +96,13 @@ export function useLiveKitRoom() {
       return null;
     }
 
+    if (!access.server_url || !access.token) {
+      setPhase('error');
+      setError('Video server configuration is missing. Please contact support.');
+      console.error('Connection failed: server_url or token is missing from the backend response.');
+      return null;
+    }
+
     const room = new Room({ adaptiveStream: true, dynacast: true });
     roomRef.current = room;
     setRoom(room);
@@ -128,7 +135,7 @@ export function useLiveKitRoom() {
     try {
       await room.connect(access.server_url, access.token);
     } catch (err) {
-      console.error('LiveKit connect failed', err);
+      console.error('LiveKit connect failed for room', access.room_name, 'at', access.server_url, err);
       roomRef.current = null;
       setRoom(null);
       setPhase('error');

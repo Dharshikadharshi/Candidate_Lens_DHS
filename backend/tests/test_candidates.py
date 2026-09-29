@@ -37,19 +37,20 @@ mock_user = User(
 def override_get_current_user():
     return mock_user
 
-app.dependency_overrides[get_db] = override_get_db
-app.dependency_overrides[get_current_user] = override_get_current_user
-
 client = TestClient(app)
 
 @pytest.fixture(scope="module", autouse=True)
 def setup_db():
+    Base.metadata.create_all(bind=engine)
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_user] = override_get_current_user
     db = TestingSessionLocal()
     yield db
     
     db.query(Candidate).delete()
     db.commit()
     db.close()
+    app.dependency_overrides.clear()
     
     import shutil
     uploads = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
@@ -86,6 +87,12 @@ def test_create_candidate_without_resume():
     assert data["target_role"] == "Frontend Developer"
     assert data["status"] == "awaiting_assessment"
     assert "id" in data
+    
+    # Verify DB explicitly
+    db = TestingSessionLocal()
+    cand = db.query(Candidate).filter(Candidate.id == uuid.UUID(data["id"])).first()
+    assert cand.created_by == mock_user.id
+    db.close()
 
 def test_create_candidate_successfully():
     response = client.post("/api/candidates", json={

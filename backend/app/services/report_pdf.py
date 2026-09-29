@@ -245,3 +245,149 @@ def render_report_pdf(report: dict) -> bytes:
 
     doc.build(story, onFirstPage=footer, onLaterPages=footer)
     return buffer.getvalue()
+
+
+def render_resume_validation_pdf(report: dict) -> bytes:
+    s = _styles()
+    info = report.get("candidate_info") or {}
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer, pagesize=A4, leftMargin=16 * mm, rightMargin=16 * mm, topMargin=14 * mm, bottomMargin=14 * mm,
+        title=f"Resume Validation Report - {info.get('candidate_name', 'Candidate')}", author="CandidateLens"
+    )
+    width = doc.width
+    story = [
+        _p(f"Resume Validation Report — {info.get('candidate_name', 'Candidate')}", s["title"]),
+        _p(f"Generated {_date(report.get('generated_at'))} · rubric {report.get('rubric_version')}", s["meta"]),
+        _p("This report evaluates the resume document and available evidence. It does not independently authenticate the candidate's claims or determine candidate competence or hiring suitability.", s["banner"]),
+    ]
+
+    # A. Document Header
+    story.append(_p("A. Document Header", s["h2"]))
+    story.append(_table([
+        ["Candidate", info.get("candidate_name")],
+        ["Target role", report.get("target_role")],
+        ["Resume filename", report.get("resume_filename", "No resume")],
+        ["Validation date", _date(report.get("generated_at"))],
+        ["Validation status", str(report.get("validation_status")).replace("_", " ").title()],
+        ["Rubric version", report.get("rubric_version")],
+    ], [35 * mm, width - 35 * mm], s, header=False))
+
+    # B. Overall Score
+    story.append(_p("B. Overall Score", s["h2"]))
+    if report.get("validation_status") == "failed":
+        story.append(_p(f"Validation failed: {report.get('error')}", s["body"]))
+    else:
+        story.append(_p(f"Resume Quality Score: {report.get('overall_score', 0)} / 100", s["h3"]))
+        rows = [["Category", "Score", "Max Score"]]
+        for c in report.get("category_scores") or []:
+            rows.append([
+                c.get("category", "—"),
+                str(c.get("score", 0)),
+                str(c.get("maximum_score", 0))
+            ])
+        story.append(_table(rows, [width * 0.6, width * 0.2, width * 0.2], s))
+
+    # C. External Verification
+    story.append(_p("C. External Verification", s["h2"]))
+    github = report.get("github_verification") or {}
+    linkedin = report.get("linkedin_verification") or {}
+    
+    if "profile" in github:
+        github_status = github["profile"].get("status", "not_checked")
+        github_msg = github["profile"].get("message", "")
+        github_username = github["profile"].get("username", "")
+        repos = github["profile"].get("public_repositories", 0)
+        story.append(_p(f"GitHub Profile: {github_status.replace('_', ' ').title()}" + (f" ({github_username}, {repos} repos)" if github_username else ""), s["body"]))
+        if github_msg:
+            story.append(_p(f"  Note: {github_msg}", s["small"]))
+            
+        project_matches = github.get("project_matches", [])
+        if project_matches:
+            story.append(_p("GitHub Project Verification", s["h3"]))
+            rows = [["Resume Project", "Status", "Repository", "Match Confidence", "Missing Tech Evidence"]]
+            for match in project_matches:
+                rows.append([
+                    str(match.get("resume_project", "Unknown Project")),
+                    str(match.get("status", "Unknown Status")).replace('_', ' '),
+                    str(match.get("repository", "None Found")),
+                    f"{match.get('confidence', 0.0):.1%}",
+                    ", ".join(match.get("missing_claims", [])) or "None"
+                ])
+            story.append(_table(rows, [width * 0.25, width * 0.15, width * 0.2, width * 0.15, width * 0.25], s))
+    else:
+        story.append(_p(f"GitHub: {github.get('status', 'not_checked').replace('_', ' ').title()}", s["body"]))
+        if github.get("message"):
+            story.append(_p(f"  Note: {github.get('message')}", s["small"]))
+            
+    story.append(_p(f"LinkedIn: {linkedin.get('status', 'not_checked').replace('_', ' ').title()}", s["body"]))
+    if linkedin.get("message"):
+        story.append(_p(f"  Note: {linkedin.get('message')}", s["small"]))
+
+    # D. Missing Information & Inconsistencies
+    story.append(_p("D. Missing Information & Inconsistencies", s["h2"]))
+    missing = report.get("missing_information") or []
+    if missing:
+        story.append(_p("Missing Information:", s["h3"]))
+        story += _bullets([f"{m.get('item')} ({m.get('status')})" for m in missing], s)
+    else:
+        story.append(_p("No missing information reported.", s["small"]))
+        
+    inconsistencies = report.get("inconsistencies") or []
+    if inconsistencies:
+        story.append(_p("Inconsistencies:", s["h3"]))
+        story += _bullets([f"[{i.get('severity')}] {i.get('type')}: {i.get('description')}" for i in inconsistencies], s)
+    else:
+        story.append(_p("No inconsistencies found.", s["small"]))
+
+    # D. Detailed Findings, E. Evidence Gaps, F. Potential Inconsistencies, G. Readability
+    story.append(_p("D. Detailed Findings", s["h2"]))
+    findings = report.get("detailed_findings") or []
+    if not findings:
+        story.append(_p("No findings available.", s["small"]))
+    else:
+        for f in findings:
+            cat = f.get("category") or "—"
+            score = f.get("score", 0)
+            max_score = f.get("maximum_score", 0)
+            
+            block = [_p(f"{cat} ({score}/{max_score}) · {str(f.get('review_status') or 'ok').title()}", s["h3"])]
+            block.append(_p(f["finding_description"], s["body"]))
+            
+            excerpt = f.get("relevant_resume_excerpt")
+            if not excerpt:
+                excerpt = "Evidence unavailable."
+            elif f.get("resume_page_or_section"):
+                excerpt += f" (Page/Section: {f['resume_page_or_section']})"
+            
+            block.append(_p(f"Resume excerpt: {excerpt}", s["quote"]))
+            
+            if f.get("reasoning_summary"):
+                block.append(_p(f"Reasoning: {f['reasoning_summary']}", s["small"]))
+            if f.get("recommended_action"):
+                block.append(_p(f"Recommended action: {f['recommended_action']}", s["small"]))
+                
+            block.append(Spacer(1, 4))
+            story.append(KeepTogether(block))
+
+    # H. Recommended Interview Follow-up Questions
+    story.append(_p("H. Recommended Interview Follow-up Questions", s["h2"]))
+    
+    from app.services.resume_validation import normalize_suggested_questions
+    suggested = normalize_suggested_questions(report.get("suggested_questions") or [])
+    story += [_p(f"{i}. [{q.get('category', 'General Verification')}] {q['question']} — Priority: {q.get('priority', 'Medium')} — {q['rationale']}", s["body"]) for i, q in enumerate(suggested, 1)] or [_p("None.", s["small"])]
+
+    # I. Assessment Limitations
+    story.append(_p("I. Assessment Limitations", s["h2"]))
+    story.append(_p("This report evaluates the resume document and available evidence. It does not independently authenticate the candidate's claims or determine candidate competence or hiring suitability.", s["small"]))
+
+    def footer(canvas, document):
+        canvas.saveState()
+        canvas.setFont("Helvetica", 7)
+        canvas.setFillColor(GREY)
+        canvas.drawString(16 * mm, 8 * mm, "CandidateLens · Confidential resume validation report")
+        canvas.drawRightString(A4[0] - 16 * mm, 8 * mm, f"Page {document.page}")
+        canvas.restoreState()
+
+    doc.build(story, onFirstPage=footer, onLaterPages=footer)
+    return buffer.getvalue()

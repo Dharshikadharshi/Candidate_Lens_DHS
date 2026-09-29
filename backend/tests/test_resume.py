@@ -15,7 +15,7 @@ from app.core.security import get_password_hash
 import uuid
 
 # Setup test DB
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
+SQLALCHEMY_DATABASE_URL = "sqlite:///./test_resume_db.db"
 engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -28,11 +28,10 @@ def override_get_db():
     finally:
         db.close()
 
-# Mock user for auth
 mock_user = User(
     id=uuid.UUID("e82939b4-3b2d-45f8-8bb0-c1181f08c346"), 
     email="admin@test.com", 
-    password_hash=get_password_hash("password123"),
+    password_hash="fake",
     role="hr", 
     is_active=True
 )
@@ -40,13 +39,13 @@ mock_user = User(
 def override_get_current_user():
     return mock_user
 
-app.dependency_overrides[get_db] = override_get_db
-app.dependency_overrides[get_current_user] = override_get_current_user
-
 client = TestClient(app)
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="module", autouse=True)
 def setup_db():
+    Base.metadata.create_all(bind=engine)
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_user] = override_get_current_user
     db = TestingSessionLocal()
     
     # Create test candidate
@@ -66,13 +65,18 @@ def setup_db():
     db.query(Candidate).delete()
     db.commit()
     db.close()
+    app.dependency_overrides.clear()
     
     # Clean uploads
     import shutil
     uploads = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
     if os.path.exists(uploads):
         shutil.rmtree(uploads)
-    os.remove("./test.db")
+    if os.path.exists("./test_resume_db.db"):
+        try:
+            os.remove("./test_resume_db.db")
+        except OSError:
+            pass
 
 def test_unauthenticated_upload():
     # Remove override
