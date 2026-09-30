@@ -83,6 +83,8 @@ class ResumeValidationResponse(BaseModel):
     missing_information: Optional[List[dict]] = None
     github_verification: Optional[dict] = None
     linkedin_verification: Optional[dict] = None
+    leetcode_verification: Optional[dict] = None
+    hackerrank_verification: Optional[dict] = None
     project_verification: Optional[List[dict]] = None
     rubric_version: Optional[str] = None
     model_name: Optional[str] = None

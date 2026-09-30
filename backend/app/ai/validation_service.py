@@ -3,12 +3,19 @@ from typing import List, Optional
 from app.ai.client import AIClient
 from app.schemas.resume_validation import ValidationFinding, SuggestedQuestion, VerificationSummary, EvidenceItem, InconsistencyItem, MissingInfoItem, ProjectVerification
 
+class PlatformClaims(BaseModel):
+    leetcode: List[str] = Field(default_factory=list, description="Claims about LeetCode (e.g. '500+ problems solved', 'rating 1850')")
+    hackerrank: List[str] = Field(default_factory=list, description="Claims about HackerRank (e.g. '5-star Python')")
+    linkedin: List[str] = Field(default_factory=list, description="Claims about LinkedIn")
+    github: List[str] = Field(default_factory=list, description="Claims about GitHub")
+
 class ResumeValidationOutput(BaseModel):
     verification_summary: VerificationSummary = Field(description="Summary of which sections were detected in the resume.")
     evidence: List[EvidenceItem] = Field(description="Specific skills or claims found with their source evidence.")
     inconsistencies: List[InconsistencyItem] = Field(description="Any contradictions, overlapping dates, or logical issues.")
     missing_information: List[MissingInfoItem] = Field(description="Information typically expected but not found.")
     project_verification: List[ProjectVerification] = Field(description="Projects mentioned in the resume and their details.")
+    platform_claims: PlatformClaims = Field(default_factory=PlatformClaims, description="Claims related to specific external platforms like 'leetcode', 'hackerrank', 'linkedin' extracted from the resume.")
     findings: List[ValidationFinding] = Field(description="Detailed findings across all 5 rubric categories. You MUST provide exactly one finding summary for each category summing up the score, or multiple findings per category that add up to the score.")
     suggested_questions: List[SuggestedQuestion] = Field(description="Suggested HR follow-up questions categorized by Technical Verification, Project Defense, Skill Verification, Experience Clarification, Resume Inconsistency.")
 
@@ -45,6 +52,7 @@ Also extract rich structured data:
 - Inconsistencies: Any date overlaps, logic gaps, or inconsistencies. Severity: low, medium, high.
 - Missing Information: Anything critical missing. Status: "missing", "not_provided", "needs_review".
 - Project Verification: List major projects. For each extract: project_name, description, technologies (list of strings), date, claimed_features (list), claimed_frameworks (list), claimed_models (list), claimed_deployment (list).
+- Platform Claims: Extract specific claims explicitly made about external platforms. Keys should be 'leetcode', 'hackerrank', 'linkedin', 'github'. Values are list of string claims (e.g., '500+ problems solved', 'rating 1850', '5-star Python').
 - Suggested Questions: Include category (e.g., Technical Verification, Project Defense, Skill Verification, Experience Clarification, Resume Inconsistency) and priority (High, Medium, Low).
 """
 

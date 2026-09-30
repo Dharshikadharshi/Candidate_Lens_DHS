@@ -25,6 +25,9 @@ class ResumeText:
     truncated: bool
     redactions: dict = field(default_factory=dict)
     github_url: Optional[str] = None
+    linkedin_url: Optional[str] = None
+    leetcode_url: Optional[str] = None
+    hackerrank_url: Optional[str] = None
 
 
 def file_fingerprint(data: bytes) -> str:
@@ -105,6 +108,42 @@ def extract_github_url(text: str, annotations: list[str] = None) -> Optional[str
     
     return None
 
+def extract_linkedin_url(text: str, annotations: list[str] = None) -> Optional[str]:
+    linkedin_pattern = re.compile(r"(?:https?://)?(?:www\.)?linkedin\.com/in/([a-zA-Z0-9_-]+)/?", re.IGNORECASE)
+    if annotations:
+        for ann in annotations:
+            match = linkedin_pattern.search(ann)
+            if match:
+                return f"https://www.linkedin.com/in/{match.group(1)}"
+    match = linkedin_pattern.search(text)
+    if match:
+        return f"https://www.linkedin.com/in/{match.group(1)}"
+    return None
+
+def extract_leetcode_url(text: str, annotations: list[str] = None) -> Optional[str]:
+    leetcode_pattern = re.compile(r"(?:https?://)?(?:www\.)?leetcode\.com/(?:u/)?([a-zA-Z0-9_-]+)/?", re.IGNORECASE)
+    if annotations:
+        for ann in annotations:
+            match = leetcode_pattern.search(ann)
+            if match:
+                return f"https://leetcode.com/{match.group(1)}/"
+    match = leetcode_pattern.search(text)
+    if match:
+        return f"https://leetcode.com/{match.group(1)}/"
+    return None
+
+def extract_hackerrank_url(text: str, annotations: list[str] = None) -> Optional[str]:
+    hackerrank_pattern = re.compile(r"(?:https?://)?(?:www\.)?hackerrank\.com/([a-zA-Z0-9_-]+)/?", re.IGNORECASE)
+    if annotations:
+        for ann in annotations:
+            match = hackerrank_pattern.search(ann)
+            if match:
+                return f"https://www.hackerrank.com/{match.group(1)}"
+    match = hackerrank_pattern.search(text)
+    if match:
+        return f"https://www.hackerrank.com/{match.group(1)}"
+    return None
+
 
 def extract_resume_text(data: bytes, file_type: str, filename: str) -> ResumeText:
     name = filename.lower()
@@ -125,6 +164,9 @@ def extract_resume_text(data: bytes, file_type: str, filename: str) -> ResumeTex
             raw_text_for_extraction += cleaned + " "
             
     github_url = extract_github_url(raw_text_for_extraction, links)
+    linkedin_url = extract_linkedin_url(raw_text_for_extraction, links)
+    leetcode_url = extract_leetcode_url(raw_text_for_extraction, links)
+    hackerrank_url = extract_hackerrank_url(raw_text_for_extraction, links)
     
     text = "\n\n".join(marked)
     if len(re.sub(r"\W", "", text)) < 40:
@@ -134,7 +176,10 @@ def extract_resume_text(data: bytes, file_type: str, filename: str) -> ResumeTex
     truncated = len(text) > MAX_RESUME_CHARS
     if truncated:
         text = text[:MAX_RESUME_CHARS]
-    return ResumeText(text=text, pages=len(pages), chars=len(text), truncated=truncated, redactions=counts, github_url=github_url)
+    return ResumeText(
+        text=text, pages=len(pages), chars=len(text), truncated=truncated, redactions=counts, 
+        github_url=github_url, linkedin_url=linkedin_url, leetcode_url=leetcode_url, hackerrank_url=hackerrank_url
+    )
 
 
 def normalize(text: str) -> str:

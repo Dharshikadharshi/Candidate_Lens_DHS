@@ -304,6 +304,66 @@ const ResumeValidationReportPage: React.FC = () => {
                         <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>— Not provided</div>
                       )}
                     </div>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, marginBottom: '0.5rem' }}>
+                        <span>LeetCode</span>
+                      </div>
+                      {report.leetcode_verification ? (
+                        <div style={{ fontSize: '0.875rem' }}>
+                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '4px' }}>
+                            <StatusIcon status={report.leetcode_verification.status} />
+                            <span>{report.leetcode_verification.status === 'verified' ? 'Profile verified' : (report.leetcode_verification.message || 'Not verified')}</span>
+                          </div>
+                          {report.leetcode_verification.status === 'verified' && (
+                            <div style={{ paddingLeft: '1.5rem', color: 'var(--text-secondary)', fontSize: '0.75rem' }}>
+                              Problems Solved: {report.leetcode_verification.solved}<br/>
+                              Rating: {report.leetcode_verification.rating}
+                            </div>
+                          )}
+                          {report.leetcode_verification.claims_verification && report.leetcode_verification.claims_verification.map((claim: any, idx: number) => (
+                              <div key={idx} style={{ marginTop: '4px', fontSize: '0.75rem', paddingLeft: '1.5rem' }}>
+                                <div style={{display: 'flex', gap: '4px', alignItems: 'center'}}>
+                                    <StatusIcon status={claim.status === 'VERIFIED' ? 'verified' : claim.status === 'INCONSISTENCY' ? 'invalid' : 'unavailable'} /> 
+                                    <strong>{claim.claim}</strong>
+                                </div>
+                                <div style={{ color: 'var(--text-secondary)', paddingLeft: '20px' }}>{claim.evidence}</div>
+                              </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>— Not provided</div>
+                      )}
+                    </div>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, marginBottom: '0.5rem' }}>
+                        <span>HackerRank</span>
+                      </div>
+                      {report.hackerrank_verification ? (
+                        <div style={{ fontSize: '0.875rem' }}>
+                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '4px' }}>
+                            <StatusIcon status={report.hackerrank_verification.status} />
+                            <span>{report.hackerrank_verification.status === 'verified' ? 'Profile verified' : (report.hackerrank_verification.message || 'Not verified')}</span>
+                          </div>
+                          {report.hackerrank_verification.status === 'verified' && (
+                            <div style={{ paddingLeft: '1.5rem', color: 'var(--text-secondary)', fontSize: '0.75rem' }}>
+                              Badges: {report.hackerrank_verification.badges}<br/>
+                              Python: {report.hackerrank_verification.python_stars} Stars
+                            </div>
+                          )}
+                          {report.hackerrank_verification.claims_verification && report.hackerrank_verification.claims_verification.map((claim: any, idx: number) => (
+                              <div key={idx} style={{ marginTop: '4px', fontSize: '0.75rem', paddingLeft: '1.5rem' }}>
+                                <div style={{display: 'flex', gap: '4px', alignItems: 'center'}}>
+                                    <StatusIcon status={claim.status === 'VERIFIED' ? 'verified' : claim.status === 'INCONSISTENCY' ? 'invalid' : 'unavailable'} /> 
+                                    <strong>{claim.claim}</strong>
+                                </div>
+                                <div style={{ color: 'var(--text-secondary)', paddingLeft: '20px' }}>{claim.evidence}</div>
+                              </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>— Not provided</div>
+                      )}
+                    </div>
                   </div>
                 </section>
 

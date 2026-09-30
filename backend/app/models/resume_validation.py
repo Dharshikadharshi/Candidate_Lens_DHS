@@ -26,6 +26,8 @@ class ResumeValidationReport(Base):
     missing_information = Column(JSONType)
     github_verification = Column(JSONType)
     linkedin_verification = Column(JSONType)
+    leetcode_verification = Column(JSONType)
+    hackerrank_verification = Column(JSONType)
     project_verification = Column(JSONType)
     rubric_version = Column(String)
     model_name = Column(String)

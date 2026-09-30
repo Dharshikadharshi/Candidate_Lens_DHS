@@ -323,6 +323,24 @@ def render_resume_validation_pdf(report: dict) -> bytes:
     story.append(_p(f"LinkedIn: {linkedin.get('status', 'not_checked').replace('_', ' ').title()}", s["body"]))
     if linkedin.get("message"):
         story.append(_p(f"  Note: {linkedin.get('message')}", s["small"]))
+        
+    leetcode = report.get("leetcode_verification") or {}
+    story.append(_p(f"LeetCode: {leetcode.get('status', 'not_checked').replace('_', ' ').title()}", s["body"]))
+    if leetcode.get("message"):
+        story.append(_p(f"  Note: {leetcode.get('message')}", s["small"]))
+    if leetcode.get("status") == "verified":
+        story.append(_p(f"  Problems Solved: {leetcode.get('solved', 0)} · Rating: {leetcode.get('rating', 0)}", s["small"]))
+    for claim in leetcode.get("claims_verification", []):
+        story.append(_p(f"  Claim [{claim.get('status')}]: {claim.get('claim')} - {claim.get('evidence')}", s["small"]))
+
+    hackerrank = report.get("hackerrank_verification") or {}
+    story.append(_p(f"HackerRank: {hackerrank.get('status', 'not_checked').replace('_', ' ').title()}", s["body"]))
+    if hackerrank.get("message"):
+        story.append(_p(f"  Note: {hackerrank.get('message')}", s["small"]))
+    if hackerrank.get("status") == "verified":
+        story.append(_p(f"  Badges: {hackerrank.get('badges', 0)} · Python Stars: {hackerrank.get('python_stars', 0)}", s["small"]))
+    for claim in hackerrank.get("claims_verification", []):
+        story.append(_p(f"  Claim [{claim.get('status')}]: {claim.get('claim')} - {claim.get('evidence')}", s["small"]))
 
     # D. Missing Information & Inconsistencies
     story.append(_p("D. Missing Information & Inconsistencies", s["h2"]))

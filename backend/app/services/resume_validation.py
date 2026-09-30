@@ -130,15 +130,17 @@ def run_resume_validation(session_factory: Callable[[], Session], ai: AIClient, 
             report.project_verification = [p.model_dump() for p in output.project_verification] if output.project_verification else []
             
             # External Verifications
-            from app.services.external_verification import verify_linkedin_profile
+            from app.services.external_verification import verify_linkedin_profile, verify_leetcode_profile, verify_hackerrank_profile
             from app.services.github_verification import verify_github_projects
             
             github_url = text.github_url or getattr(candidate, "github_profile", "")
             if not isinstance(github_url, str):
                 github_url = ""
-            linkedin_url = getattr(candidate, "linkedin_profile", "")
+            linkedin_url = text.linkedin_url or getattr(candidate, "linkedin_profile", "")
             if not isinstance(linkedin_url, str):
                 linkedin_url = ""
+            leetcode_url = text.leetcode_url or ""
+            hackerrank_url = text.hackerrank_url or ""
             
             profile_data, project_matches = verify_github_projects(github_url, [p.model_dump() for p in output.project_verification], ai, str(candidate.id))
             
@@ -148,11 +150,17 @@ def run_resume_validation(session_factory: Callable[[], Session], ai: AIClient, 
             }
             report.linkedin_verification = verify_linkedin_profile(linkedin_url)
             
+            platform_claims = output.platform_claims.model_dump() if output.platform_claims else {}
+            report.leetcode_verification = verify_leetcode_profile(leetcode_url, platform_claims.get("leetcode", []))
+            report.hackerrank_verification = verify_hackerrank_profile(hackerrank_url, platform_claims.get("hackerrank", []))
+            
             report.validation_pipeline = [
                 {"step": "resume_extraction", "status": "completed", "message": "Text extracted successfully."},
                 {"step": "ai_analysis", "status": "completed", "message": "AI analysis completed."},
                 {"step": "github_verification", "status": profile_data.get("status", "not_checked"), "message": profile_data.get("message", "GitHub profile checked.")},
                 {"step": "linkedin_verification", "status": report.linkedin_verification.get("status", "not_checked"), "message": "LinkedIn profile checked."},
+                {"step": "leetcode_verification", "status": report.leetcode_verification.get("status", "not_checked"), "message": "LeetCode profile checked."},
+                {"step": "hackerrank_verification", "status": report.hackerrank_verification.get("status", "not_checked"), "message": "HackerRank profile checked."},
             ]
             
             report.model_name = model
@@ -160,18 +168,25 @@ def run_resume_validation(session_factory: Callable[[], Session], ai: AIClient, 
             report.error = None
             
         except ResumeTextError as exc:
-            report.validation_status, report.error = "failed", str(exc)
+            report.validation_status = "failed"
+            report.error = f"resume_extraction_error: {str(exc)}"
+            logger.error(f"ERROR: Resume validation text extraction failed category=resume_extraction_error report_id={report_id} error={str(exc)}")
         except AIError as exc:
-            report.validation_status, report.error = "failed", exc.public_message()
+            report.validation_status = "failed"
+            # Map the AIError kind to an internal category string
+            error_cat = f"ai_{exc.kind}_error"
+            report.error = f"{error_cat}: {exc.public_message()}"
+            logger.error(f"ERROR: Resume validation AI call failed category={error_cat} provider=OpenAI model={model if 'model' in locals() else 'unknown'} report_id={report_id}")
             
         db.commit()
         logger.info("resume validation %s finished with status %s", report_id, report.validation_status)
-    except Exception:
+    except Exception as e:
         db.rollback()
         logger.exception("resume validation %s crashed", report_id)
         report = db.get(ResumeValidationReport, report_id)
         if report is not None:
-            report.validation_status, report.error = "failed", "Unexpected error during validation."
+            report.validation_status = "failed"
+            report.error = "unknown_error: Unexpected error during validation."
             db.commit()
     finally:
         db.close()

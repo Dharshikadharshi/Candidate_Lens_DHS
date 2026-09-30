@@ -111,6 +111,8 @@ export interface ResumeValidationReport {
   missing_information?: MissingInfoItem[];
   github_verification?: GitHubVerification;
   linkedin_verification?: any;
+  leetcode_verification?: any;
+  hackerrank_verification?: any;
   project_verification?: ProjectVerification[];
   model_name?: string;
   prompt_version?: string;
