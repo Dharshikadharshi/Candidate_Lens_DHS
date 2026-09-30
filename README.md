@@ -1,4 +1,4 @@
-# CandidateLens
+# CandidateLens -TEAM 7 (Dharshika ,Sandhiya,Haresh)
 
 CandidateLens is an HR-facing pre-round readiness platform.
 
